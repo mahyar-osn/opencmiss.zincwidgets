@@ -1,4 +1,4 @@
-ZincPythonUtilities
-===================
+ZincPythonTools
+===============
 
-A collection of utilities for PyZinc, the Python bindings for the Zinc Visualisation Library
+A collection of Qt widgets and utilities building on the Python bindings for the OpenCMISS-Zinc Visualisation Library.
