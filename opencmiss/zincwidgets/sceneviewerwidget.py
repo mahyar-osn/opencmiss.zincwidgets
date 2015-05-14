@@ -1,3 +1,15 @@
+"""
+Zinc Sceneviewer Widget
+
+Implements a Zinc Sceneviewer Widget on Python using PySide or PyQt,
+which renders the Zinc Scene with OpenGL and allows interactive
+transformation of the view.
+Widget is derived from QtOpenGL.QGLWidget.
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+"""
 # This python module is intended to facilitate users creating their own applications that use OpenCMISS-Zinc
 # See the examples at https://svn.physiomeproject.org/svn/cmiss/zinc/bindings/trunk/python/ for further
 # information.
@@ -27,7 +39,7 @@ button_map = {QtCore.Qt.LeftButton: Sceneviewerinput.BUTTON_TYPE_LEFT,
 # Create a modifier map of Qt modifier keys to Zinc modifier keys
 def modifier_map(qt_modifiers):
     '''
-    Return a Zinc SceneViewerInput modifiers object that is created from
+    Return a Zinc Sceneviewerinput modifiers object that is created from
     the Qt modifier flags passed in.
     '''
     modifiers = Sceneviewerinput.MODIFIER_FLAG_NONE
@@ -56,7 +68,7 @@ class SelectionMode(object):
 # selectionMode end
 
 
-class ZincWidget(QtOpenGL.QGLWidget):
+class SceneviewerWidget(QtOpenGL.QGLWidget):
     
     try:
         # PySide
@@ -86,7 +98,7 @@ class ZincWidget(QtOpenGL.QGLWidget):
         self._elemSelectMode = True
         self._selection_mode = SelectionMode.NONE
         self._selectionGroup = None
-        self._selection_box = None
+        self._selectionBox = None # created and destroyed on demand in mouse events
         self._ignore_mouse_events = False
         # init end
 
@@ -101,7 +113,7 @@ class ZincWidget(QtOpenGL.QGLWidget):
         if not self._context is None:
             return self._context
         else:
-            raise RuntimeError("Zinc context has not been set.")
+            raise RuntimeError("Zinc context has not been set in Sceneviewerwidget.")
 
     def getSceneviewer(self):
         '''
@@ -113,6 +125,9 @@ class ZincWidget(QtOpenGL.QGLWidget):
         self._selectionAlwaysAdditive = True
 
     def setSelectModeNode(self):
+        '''
+        Set the selection mode to select *only* nodes.
+        '''
         self._nodeSelectMode = True
         self._dataSelectMode = False
         self._elemSelectMode = False
@@ -126,11 +141,17 @@ class ZincWidget(QtOpenGL.QGLWidget):
         self._elemSelectMode = False
 
     def setSelectModeElement(self):
+        '''
+        Set the selection mode to select *only* elements.
+        '''
         self._nodeSelectMode = False
         self._dataSelectMode = False
         self._elemSelectMode = True
 
     def setSelectModeAll(self):
+        '''
+        Set the selection mode to select both nodes and elements.
+        '''
         self._nodeSelectMode = True
         self._dataSelectMode = True
         self._elemSelectMode = True
@@ -140,6 +161,8 @@ class ZincWidget(QtOpenGL.QGLWidget):
         '''
         Initialise the Zinc scene for drawing the axis glyph at a point.  
         '''
+        # Following throws exception if you haven't called setContext() yet
+        self.getContext()
         if self._sceneviewer is None:
             # Get the scene viewer module.
             scene_viewer_module = self._context.getSceneviewermodule()
@@ -163,24 +186,10 @@ class ZincWidget(QtOpenGL.QGLWidget):
             self._sceneviewer.setScene(scene)
 
             self._selectionGroup = fieldmodule.createFieldGroup()
-    #         scene.setSelectionField(self._selectionGroup)
+            scene.setSelectionField(self._selectionGroup)
 
             self._scenepicker = scene.createScenepicker()
             self._scenepicker.setScenefilter(graphics_filter)
-
-            # If the standard glyphs haven't been defined then the
-            # selection box will not be visible
-            self._selection_box = scene.createGraphicsPoints()
-            self._selection_box.setName(SELECTION_RUBBERBAND_NAME)
-            self._selection_box.setScenecoordinatesystem(SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT)
-            attributes = self._selection_box.getGraphicspointattributes()
-            attributes.setGlyphShapeType(Glyph.SHAPE_TYPE_CUBE_WIREFRAME)
-            attributes.setBaseSize([10, 10, 0.9999])
-            attributes.setGlyphOffset([1, -1, 0])
-            self._selectionBox_setBaseSize = attributes.setBaseSize
-            self._selectionBox_setGlyphOffset = attributes.setGlyphOffset
-
-            self._selection_box.setVisibilityFlag(False)
 
             # Set up unproject pipeline
             self._window_coords_from = fieldmodule.createFieldConstant([0, 0, 0])
@@ -258,6 +267,10 @@ class ZincWidget(QtOpenGL.QGLWidget):
         return None
 
     def project(self, x, y, z):
+        '''
+        project the given point in global coordinates into window coordinates
+        with the origin at the window's top left pixel.
+        '''
         in_coords = [x, y, z]
         fieldmodule = self._global_coords_from.getFieldmodule()
         fieldcache = fieldmodule.createFieldcache()
@@ -269,6 +282,13 @@ class ZincWidget(QtOpenGL.QGLWidget):
         return None
 
     def unproject(self, x, y, z):
+        '''
+        unproject the given point in window coordinates where the origin is
+        at the window's top left pixel into global coordinates.  The z value
+        is a depth which is mapped so that 0 is on the near plane and 1 is 
+        on the far plane.
+        ???GRC -1 on the far and +1 on the near clipping plane
+        '''
         in_coords = [x, y, z]
         fieldmodule = self._window_coords_from.getFieldmodule()
         fieldcache = fieldmodule.createFieldcache()
@@ -370,7 +390,7 @@ class ZincWidget(QtOpenGL.QGLWidget):
         self._handle_mouse_events = False  # Track when the zinc should be handling mouse events
         if not self._ignore_mouse_events and (event.modifiers() & QtCore.Qt.SHIFT) and (self._nodeSelectMode or self._elemSelectMode) and button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_LEFT:
             self._selection_position_start = (event.x(), event.y())
-            self._selection_mode = SelectionMode.EXCULSIVE
+            self._selection_mode = SelectionMode.EXCLUSIVE
             if event.modifiers() & QtCore.Qt.ALT:
                 self._selection_mode = SelectionMode.ADDITIVE
         elif not self._ignore_mouse_events and not event.modifiers() or (event.modifiers() & QtCore.Qt.SHIFT and button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_RIGHT):
@@ -397,7 +417,10 @@ class ZincWidget(QtOpenGL.QGLWidget):
             # Construct a small frustum to look for nodes in.
             root_region = self._context.getDefaultRegion()
             root_region.beginHierarchicalChange()
-            self._selection_box.setVisibilityFlag(False)
+            if self._selectionBox != None:
+                scene = self._selectionBox.getScene()
+                scene.removeGraphics(self._selectionBox)
+                self._selectionBox = None
 
             if (x != self._selection_position_start[0] and y != self._selection_position_start[1]):
                 left = min(x, self._selection_position_start[0])
@@ -405,7 +428,7 @@ class ZincWidget(QtOpenGL.QGLWidget):
                 bottom = min(y, self._selection_position_start[1])
                 top = max(y, self._selection_position_start[1])
                 self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_LOCAL, left, bottom, right, top);
-                if self._selection_mode == SelectionMode.EXCULSIVE:
+                if self._selection_mode == SelectionMode.EXCLUSIVE:
                     self._selectionGroup.clear()
                 if self._nodeSelectMode or self._dataSelectMode:
                     self._scenepicker.addPickedNodesToFieldGroup(self._selectionGroup)
@@ -414,7 +437,7 @@ class ZincWidget(QtOpenGL.QGLWidget):
             else:
 
                 self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_LOCAL, x - 0.5, y - 0.5, x + 0.5, y + 0.5)
-                if self._nodeSelectMode and self._elemSelectMode and self._selection_mode == SelectionMode.EXCULSIVE and not self._scenepicker.getNearestGraphics().isValid():
+                if self._nodeSelectMode and self._elemSelectMode and self._selection_mode == SelectionMode.EXCLUSIVE and not self._scenepicker.getNearestGraphics().isValid():
                     self._selectionGroup.clear()
 
                 if self._nodeSelectMode and (self._scenepicker.getNearestGraphics().getFieldDomainType() == Field.DOMAIN_TYPE_NODES):
@@ -426,7 +449,7 @@ class ZincWidget(QtOpenGL.QGLWidget):
                         nodegroup = self._selectionGroup.createFieldNodeGroup(nodeset)
 
                     group = nodegroup.getNodesetGroup()
-                    if self._selection_mode == SelectionMode.EXCULSIVE:
+                    if self._selection_mode == SelectionMode.EXCLUSIVE:
                         remove_current = group.getSize() == 1 and group.containsNode(node)
                         self._selectionGroup.clear()
                         if not remove_current:
@@ -446,7 +469,7 @@ class ZincWidget(QtOpenGL.QGLWidget):
                         elementgroup = self._selectionGroup.createFieldElementGroup(mesh)
 
                     group = elementgroup.getMeshGroup()
-                    if self._selection_mode == SelectionMode.EXCULSIVE:
+                    if self._selection_mode == SelectionMode.EXCLUSIVE:
                         remove_current = group.getSize() == 1 and group.containsElement(elem)
                         self._selectionGroup.clear()
                         if not remove_current:
@@ -488,11 +511,22 @@ class ZincWidget(QtOpenGL.QGLWidget):
                 ydiff = 1
             xoff = float(self._selection_position_start[0]) / xdiff + 0.5
             yoff = float(self._selection_position_start[1]) / ydiff + 0.5
-            scene = self._selection_box.getScene()
+
+            # Using a non-ideal workaround for creating a rubber band for selection.
+            # This will create strange visual artifacts when using two scene viewers looking at
+            # the same scene.  Waiting on a proper solution in the API.
+            # Note if the standard glyphs haven't been defined then the
+            # selection box will not be visible
+            scene = self._sceneviewer.getScene()
             scene.beginChange()
-            self._selectionBox_setBaseSize([xdiff, ydiff, 0.999])
-            self._selectionBox_setGlyphOffset([xoff, -yoff, 0])
-            self._selection_box.setVisibilityFlag(True)
+            if self._selectionBox is None:
+                self._selectionBox = scene.createGraphicsPoints()
+                self._selectionBox.setScenecoordinatesystem(SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT)
+            attributes = self._selectionBox.getGraphicspointattributes()
+            attributes.setGlyphShapeType(Glyph.SHAPE_TYPE_CUBE_WIREFRAME)
+            attributes.setBaseSize([xdiff, ydiff, 0.999])
+            attributes.setGlyphOffset([xoff, -yoff, 0])
+            #self._selectionBox.setVisibilityFlag(True)
             scene.endChange()
         elif not self._ignore_mouse_events and self._handle_mouse_events:
             scene_input = self._sceneviewer.createSceneviewerinput()
