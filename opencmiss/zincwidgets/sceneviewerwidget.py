@@ -331,6 +331,9 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         '''
         return self._getNearestGraphic(x, y, Field.DOMAIN_TYPE_POINT)
 
+    def getNearestGraphicsMesh2D(self, x, y):
+        return self._getNearestGraphic(x, y, Field.DOMAIN_TYPE_MESH2D)
+
     def getNearestNode(self, x, y):
         self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_LOCAL, x - 0.5, y - 0.5, x + 0.5, y + 0.5)
         node = self._scenepicker.getNearestNode()
