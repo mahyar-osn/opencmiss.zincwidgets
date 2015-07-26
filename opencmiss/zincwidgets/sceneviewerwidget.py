@@ -91,6 +91,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         # Create a Zinc context from which all other objects can be derived either directly or indirectly.
         self._context = None
         self._sceneviewer = None
+        self._scenepicker = None
 
         # Selection attributes
         self._nodeSelectMode = True
@@ -244,14 +245,13 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         self._sceneviewer.setScenefilter(scenefilter)
 
     def getScenefilter(self):
-        result, scenefilter = self._sceneviewer.getScenefilter()
-        if result == OK:
-            return scenefilter
-
-        return None
+        return self._sceneviewer.getScenefilter()
 
     def getScenepicker(self):
         return self._scenepicker
+
+    def setScenepicker(self, scenepicker):
+        self._scenepicker = scenepicker
 
     def setPickingRectangle(self, coordinate_system, left, bottom, right, top):
         self._scenepicker.setSceneviewerRectangle(self._sceneviewer, coordinate_system, left, bottom, right, top);
@@ -317,7 +317,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
 
         return None
 
-    def getNeareshGraphics(self):
+    def getNearestGraphics(self):
         return self._scenepicker.getNearestGraphics()
 
     def getNearestGraphicsNode(self, x, y):
@@ -330,6 +330,12 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         directly from the event in the parent widget.
         '''
         return self._getNearestGraphic(x, y, Field.DOMAIN_TYPE_POINT)
+
+    def getNearestElementGraphics(self):
+        return self._scenepicker.getNearestElementGraphics()
+
+    def getNearestGraphicsMesh3D(self, x, y):
+        return self._getNearestGraphic(x, y, Field.DOMAIN_TYPE_MESH3D)
 
     def getNearestGraphicsMesh2D(self, x, y):
         return self._getNearestGraphic(x, y, Field.DOMAIN_TYPE_MESH2D)
