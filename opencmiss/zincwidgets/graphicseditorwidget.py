@@ -189,7 +189,9 @@ class GraphicsEditorWidget(QtGui.QWidget):
         self._pointScaleFactorsDisplay()
         self.ui.label_field_chooser.setField(labelField)
         # sampling attributes
-        if samplingattributes and samplingattributes.isValid():
+        isDomain0D = self._graphics.getFieldDomainType() in \
+                     [Field.DOMAIN_TYPE_POINT, Field.DOMAIN_TYPE_NODES, Field.DOMAIN_TYPE_DATAPOINTS]
+        if samplingattributes and samplingattributes.isValid() and not isDomain0D:
             self.ui.sampling_groupbox.show()
         else:
             self.ui.sampling_groupbox.hide()
