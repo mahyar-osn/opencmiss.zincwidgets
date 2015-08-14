@@ -114,6 +114,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
         samplingattributes = None
         contours = None
         streamlines = None
+        isDomain0D = True
         if self._graphics:
             coordinateField = self._graphics.getCoordinateField()
             material = self._graphics.getMaterial()
@@ -125,6 +126,8 @@ class GraphicsEditorWidget(QtGui.QWidget):
             pointattributes = self._graphics.getGraphicspointattributes()
             lineattributes = self._graphics.getGraphicslineattributes()
             samplingattributes = self._graphics.getGraphicssamplingattributes()
+            isDomain0D = self._graphics.getFieldDomainType() in \
+                [Field.DOMAIN_TYPE_POINT, Field.DOMAIN_TYPE_NODES, Field.DOMAIN_TYPE_DATAPOINTS]
         self.ui.coordinate_field_chooser.setField(coordinateField)
         self.ui.material_chooser.setMaterial(material)
         self.ui.data_field_chooser.setField(dataField)
@@ -189,7 +192,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
         self._pointScaleFactorsDisplay()
         self.ui.label_field_chooser.setField(labelField)
         # sampling attributes
-        if samplingattributes and samplingattributes.isValid():
+        if samplingattributes and samplingattributes.isValid() and not isDomain0D:
             self.ui.sampling_groupbox.show()
         else:
             self.ui.sampling_groupbox.hide()

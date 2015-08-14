@@ -60,6 +60,7 @@ class SceneviewerEditorWidget(QtGui.QWidget):
         if self._sceneviewernotifier is not None:
             if enableUpdates:
                 self._sceneviewernotifier.setCallback(self._sceneviewerChange)
+                self._displayViewSettings()
             else:
                 self._sceneviewernotifier.clearCallback()
 
