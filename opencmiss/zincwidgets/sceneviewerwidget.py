@@ -394,7 +394,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         # resizeGL end
         
     def keyPressEvent(self, event):
-        if event.key() & QtCore.Qt.Key_S and event.isAutoRepeat() == False:
+        if (event.key() == QtCore.Qt.Key_S) and event.isAutoRepeat() == False:
             self._selectionKeyPressed = True
             event.setAccepted(True)
         else:
@@ -402,7 +402,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         
             
     def keyReleaseEvent(self, event):
-        if event.key() & QtCore.Qt.Key_S  and event.isAutoRepeat() == False:
+        if (event.key() == QtCore.Qt.Key_S)  and event.isAutoRepeat() == False:
             self._selectionKeyPressed = False
             event.setAccepted(True)
         else:
@@ -418,7 +418,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
             if self._selectionKeyPressed and (self._nodeSelectMode or self._elemSelectMode):
                 self._selection_position_start = (event.x(), event.y())
                 self._selection_mode = SelectionMode.EXCLUSIVE
-                if event.modifiers() & QtCore.Qt.ALT:
+                if event.modifiers() & QtCore.Qt.SHIFT:
                     self._selection_mode = SelectionMode.ADDITIVE
             else:
                 scene_input = self._sceneviewer.createSceneviewerinput()
@@ -430,7 +430,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
 
                 self._handle_mouse_events = True
                 
-        elif not self._ignore_mouse_events and not event.modifiers() or (self._selectionKeyPressed and button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_RIGHT):
+        elif not self._ignore_mouse_events and not event.modifiers() or (event.modifiers() & QtCore.Qt.SHIFT and button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_RIGHT):
             scene_input = self._sceneviewer.createSceneviewerinput()
             scene_input.setPosition(event.x(), event.y())
             scene_input.setEventType(Sceneviewerinput.EVENT_TYPE_BUTTON_PRESS)
