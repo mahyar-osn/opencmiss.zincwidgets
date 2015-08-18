@@ -414,34 +414,21 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         '''
         event.accept()
         self._handle_mouse_events = False  # Track when the zinc should be handling mouse events
-        if not self._ignore_mouse_events and button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_LEFT:
-            if self._selectionKeyPressed and (self._nodeSelectMode or self._elemSelectMode):
-                self._selection_position_start = (event.x(), event.y())
-                self._selection_mode = SelectionMode.EXCLUSIVE
-                if event.modifiers() & QtCore.Qt.SHIFT:
-                    self._selection_mode = SelectionMode.ADDITIVE
-            else:
-                scene_input = self._sceneviewer.createSceneviewerinput()
-                scene_input.setPosition(event.x(), event.y())
-                scene_input.setEventType(Sceneviewerinput.EVENT_TYPE_BUTTON_PRESS)
-                scene_input.setButtonType(button_map[event.button()])
-                scene_input.setModifierFlags(modifier_map(event.modifiers()))
-                self._sceneviewer.processSceneviewerinput(scene_input)
-
-                self._handle_mouse_events = True
-                
-        elif not self._ignore_mouse_events and not event.modifiers() or (event.modifiers() & QtCore.Qt.SHIFT and button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_RIGHT):
+        if self._ignore_mouse_events:
+            event.ignore()
+        elif button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_LEFT and self._selectionKeyPressed and (self._nodeSelectMode or self._elemSelectMode):
+            self._selection_position_start = (event.x(), event.y())
+            self._selection_mode = SelectionMode.EXCLUSIVE
+            if event.modifiers() & QtCore.Qt.SHIFT:
+                self._selection_mode = SelectionMode.ADDITIVE
+        else:
             scene_input = self._sceneviewer.createSceneviewerinput()
             scene_input.setPosition(event.x(), event.y())
             scene_input.setEventType(Sceneviewerinput.EVENT_TYPE_BUTTON_PRESS)
             scene_input.setButtonType(button_map[event.button()])
             scene_input.setModifierFlags(modifier_map(event.modifiers()))
-
             self._sceneviewer.processSceneviewerinput(scene_input)
-
-            self._handle_mouse_events = True
-        else:
-            event.ignore()
+            self._handle_mouse_events = True            
 
     def mouseReleaseEvent(self, event):
         '''
