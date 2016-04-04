@@ -122,10 +122,10 @@ class FieldChooserWidget(QtGui.QComboBox):
         if not field or not field.isValid():
             self._field = None
         elif not field.isManaged():
-            print "Field chooser cannot set unmanaged field"
+            print("Field chooser cannot set unmanaged field")
             self._field = None
         elif self._conditional and not self._conditional(field):
-            print "Field chooser cannot set field not satisfying conditional function"
+            print("Field chooser cannot set field not satisfying conditional function")
             self._field = None
         else:
             self._field = field

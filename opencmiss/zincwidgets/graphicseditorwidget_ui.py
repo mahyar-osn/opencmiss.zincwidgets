@@ -393,6 +393,6 @@ class Ui_GraphicsEditorWidget(object):
         self.sampling_mode_combobox.setItemText(1, QtGui.QApplication.translate("GraphicsEditorWidget", "cell corners", None, QtGui.QApplication.UnicodeUTF8))
         self.sampling_mode_label.setText(QtGui.QApplication.translate("GraphicsEditorWidget", "Mode:", None, QtGui.QApplication.UnicodeUTF8))
 
-from materialchooserwidget import MaterialChooserWidget
-from fieldchooserwidget import FieldChooserWidget
-from glyphchooserwidget import GlyphChooserWidget
+from .materialchooserwidget import MaterialChooserWidget
+from .fieldchooserwidget import FieldChooserWidget
+from .glyphchooserwidget import GlyphChooserWidget

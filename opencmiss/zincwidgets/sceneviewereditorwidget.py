@@ -14,7 +14,7 @@ except ImportError:
     from PyQt4 import QtCore, QtGui
 
 import math
-from sceneviewereditorwidget_ui import Ui_SceneviewerEditorWidget
+from opencmiss.zincwidgets.sceneviewereditorwidget_ui import Ui_SceneviewerEditorWidget
 from opencmiss.zinc.sceneviewer import Sceneviewer, Sceneviewerevent
 from opencmiss.zinc.status import OK as ZINC_OK
 
@@ -94,7 +94,7 @@ class SceneviewerEditorWidget(QtGui.QWidget):
         '''
         Display real value in a widget
         '''
-        newText = unicode('{:.5g}'.format(value))
+        newText = '{:.5g}'.format(value)
         widget.setText(newText)
 
     def _displayVector(self, widget, values, numberFormat = '{:.5g}'):
@@ -149,7 +149,7 @@ class SceneviewerEditorWidget(QtGui.QWidget):
             if ZINC_OK != self._sceneviewer.setViewAngle(viewAngleRadians):
                 raise
         except:
-            print "Invalid view angle"
+            print("Invalid view angle")
         self.viewAngleDisplay()
 
     def setLookatParametersNonSkew(self):
@@ -176,7 +176,7 @@ class SceneviewerEditorWidget(QtGui.QWidget):
         try:
             self.setLookatParametersNonSkew()
         except:
-            print "Invalid eye point"
+            print("Invalid eye point")
             self.eyePositionDisplay()
 
     def lookatPointDisplay(self):
@@ -193,7 +193,7 @@ class SceneviewerEditorWidget(QtGui.QWidget):
         try:
             self.setLookatParametersNonSkew()
         except:
-            print "Invalid lookat point"
+            print("Invalid lookat point")
             self.lookatPositionDisplay()
 
     def upVectorDisplay(self):
@@ -210,7 +210,7 @@ class SceneviewerEditorWidget(QtGui.QWidget):
         try:
             self.setLookatParametersNonSkew()
         except:
-            print "Invalid up vector"
+            print("Invalid up vector")
             self.upVectorDisplay()
 
     def nearClippingDisplay(self):
@@ -263,5 +263,5 @@ class SceneviewerEditorWidget(QtGui.QWidget):
             if ZINC_OK != self._sceneviewer.setBackgroundColourRGB(colourRGB):
                 raise
         except:
-            print "Invalid background colour"
+            print("Invalid background colour")
         self.backgroundColourDisplay()
