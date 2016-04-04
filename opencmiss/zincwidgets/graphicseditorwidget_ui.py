@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'graphicseditorwidget.ui'
 #
-# Created: Thu May 14 11:53:32 2015
-#      by: pyside-uic 0.2.15 running on PySide 1.2.1
+# Created: Mon Apr 04 17:06:14 2016
+#      by: pyside-uic 0.2.15 running on PySide 1.2.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -45,6 +45,7 @@ class Ui_GraphicsEditorWidget(object):
         sizePolicy.setHeightForWidth(self.face_combobox.sizePolicy().hasHeightForWidth())
         self.face_combobox.setSizePolicy(sizePolicy)
         self.face_combobox.setObjectName("face_combobox")
+        self.face_combobox.addItem("")
         self.face_combobox.addItem("")
         self.face_combobox.addItem("")
         self.face_combobox.addItem("")
@@ -345,14 +346,15 @@ class Ui_GraphicsEditorWidget(object):
 
     def retranslateUi(self, GraphicsEditorWidget):
         GraphicsEditorWidget.setWindowTitle(QtGui.QApplication.translate("GraphicsEditorWidget", "Graphics Editor", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(0, QtGui.QApplication.translate("GraphicsEditorWidget", "-", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(1, QtGui.QApplication.translate("GraphicsEditorWidget", "all", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(2, QtGui.QApplication.translate("GraphicsEditorWidget", "xi1 = 0", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(3, QtGui.QApplication.translate("GraphicsEditorWidget", "xi1 = 1", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(4, QtGui.QApplication.translate("GraphicsEditorWidget", "xi2 = 0", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(5, QtGui.QApplication.translate("GraphicsEditorWidget", "xi2 = 1", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(6, QtGui.QApplication.translate("GraphicsEditorWidget", "xi3 = 0", None, QtGui.QApplication.UnicodeUTF8))
-        self.face_combobox.setItemText(7, QtGui.QApplication.translate("GraphicsEditorWidget", "xi3 = 1", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(0, QtGui.QApplication.translate("GraphicsEditorWidget", "all", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(1, QtGui.QApplication.translate("GraphicsEditorWidget", "any face", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(2, QtGui.QApplication.translate("GraphicsEditorWidget", "no face", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(3, QtGui.QApplication.translate("GraphicsEditorWidget", "xi1 = 0", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(4, QtGui.QApplication.translate("GraphicsEditorWidget", "xi1 = 1", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(5, QtGui.QApplication.translate("GraphicsEditorWidget", "xi2 = 0", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(6, QtGui.QApplication.translate("GraphicsEditorWidget", "xi2 = 1", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(7, QtGui.QApplication.translate("GraphicsEditorWidget", "xi3 = 0", None, QtGui.QApplication.UnicodeUTF8))
+        self.face_combobox.setItemText(8, QtGui.QApplication.translate("GraphicsEditorWidget", "xi3 = 1", None, QtGui.QApplication.UnicodeUTF8))
         self.material_label.setText(QtGui.QApplication.translate("GraphicsEditorWidget", "Material:", None, QtGui.QApplication.UnicodeUTF8))
         self.data_field_label.setText(QtGui.QApplication.translate("GraphicsEditorWidget", "Data field:", None, QtGui.QApplication.UnicodeUTF8))
         self.wireframe_checkbox.setText(QtGui.QApplication.translate("GraphicsEditorWidget", "Wireframe", None, QtGui.QApplication.UnicodeUTF8))
