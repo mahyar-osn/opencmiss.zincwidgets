@@ -83,4 +83,4 @@ class Ui_SceneEditorWidget(object):
         self.add_graphics_combobox.setItemText(9, QtGui.QApplication.translate("SceneEditorWidget", "streamlines", None, QtGui.QApplication.UnicodeUTF8))
         self.delete_graphics_button.setText(QtGui.QApplication.translate("SceneEditorWidget", "Delete", None, QtGui.QApplication.UnicodeUTF8))
 
-from graphicseditorwidget import GraphicsEditorWidget
+from .graphicseditorwidget import GraphicsEditorWidget

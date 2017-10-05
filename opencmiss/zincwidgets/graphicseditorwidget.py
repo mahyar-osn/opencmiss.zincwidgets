@@ -15,7 +15,7 @@ except ImportError:
 
 from numbers import Number
 
-from graphicseditorwidget_ui import Ui_GraphicsEditorWidget
+from opencmiss.zincwidgets.graphicseditorwidget_ui import Ui_GraphicsEditorWidget
 from opencmiss.zinc.field import Field
 from opencmiss.zinc.element import Element
 from opencmiss.zinc.glyph import Glyph
@@ -165,7 +165,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
         self._lineBaseSizeDisplay()
         self.ui.line_orientation_scale_field_chooser.setField(lineOrientationScaleField)
         self._lineScaleFactorsDisplay()
-        isStreamline = (streamlines != None) and streamlines.isValid()
+        isStreamline = (streamlines is not None) and streamlines.isValid()
         if not isStreamline:
             isStreamline = False
         model = self.ui.line_shape_combobox.model()
@@ -234,7 +234,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
         '''
         Display real value in a widget
         '''
-        newText = unicode('{:.5g}'.format(value))
+        newText = '{:.5g}'.format(value)
         widget.setText(newText)
  
     def _displayScale(self, widget, values, numberFormat = '{:.5g}'):
@@ -319,11 +319,11 @@ class GraphicsEditorWidget(QtGui.QWidget):
         '''
         Show the current state of the face combo box
         '''
-        faceType = Element.FACE_TYPE_INVALID
+        faceType = Element.FACE_TYPE_ALL
         if self._graphics:
             faceType = self._graphics.getElementFaceType()
         self.ui.face_combobox.blockSignals(True)
-        self.ui.face_combobox.setCurrentIndex(faceType - Element.FACE_TYPE_INVALID)
+        self.ui.face_combobox.setCurrentIndex(faceType - Element.FACE_TYPE_ALL)
         self.ui.face_combobox.blockSignals(False)
 
     def faceChanged(self, index):
@@ -331,7 +331,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
         Element face combo box changed
         '''
         if self._graphics:
-            self._graphics.setElementFaceType(index + Element.FACE_TYPE_INVALID)
+            self._graphics.setElementFaceType(index + Element.FACE_TYPE_ALL)
 
     def wireframeClicked(self, isChecked):
         '''
@@ -396,7 +396,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
                 if contours.setListIsovalues(isovalues) != ZINC_OK:
                     raise
         except:
-            print "Invalid isovalues"
+            print("Invalid isovalues")
         self._isovaluesDisplay()
       
     def streamVectorFieldChanged(self, index):
@@ -432,7 +432,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
                 if streamlines.setTrackLength(trackLength) != ZINC_OK:
                     raise
         except:
-            print "Invalid streamlines track length", streamlinesLengthText
+            print("Invalid streamlines track length", streamlinesLengthText)
         self._streamlinesTrackLengthDisplay()
 
     def _streamlinesTrackDirectionDisplay(self):
@@ -531,7 +531,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
             if lineattributes.setBaseSize(baseSize) != ZINC_OK:
                 raise
         except:
-            print "Invalid line base size"
+            print("Invalid line base size")
         self._lineBaseSizeDisplay()
 
     def lineOrientationScaleFieldChanged(self, index):
@@ -565,7 +565,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
             if lineattributes.setScaleFactors(scaleFactors) != ZINC_OK:
                 raise
         except:
-            print "Invalid line scale factors"
+            print("Invalid line scale factors")
         self._lineScaleFactorsDisplay()
 
     def _pointBaseSizeDisplay(self):
@@ -590,7 +590,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
             if pointattributes.setBaseSize(baseSize) != ZINC_OK:
                 raise
         except:
-            print "Invalid point base size"
+            print("Invalid point base size")
         self._pointBaseSizeDisplay()
 
     def pointOrientationScaleFieldChanged(self, index):
@@ -624,7 +624,7 @@ class GraphicsEditorWidget(QtGui.QWidget):
             if pointattributes.setScaleFactors(scaleFactors) != ZINC_OK:
                 raise
         except:
-            print "Invalid point scale factors"
+            print("Invalid point scale factors")
         self._pointScaleFactorsDisplay()
        
     def labelFieldChanged(self, index):
@@ -694,5 +694,5 @@ class GraphicsEditorWidget(QtGui.QWidget):
                     self._graphics.setTessellation(tessellation)
                     break
         except:
-            print "Invalid sampling divisions"
+            print("Invalid sampling divisions")
         self._samplingDivisionsDisplay()

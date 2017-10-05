@@ -23,12 +23,13 @@ except ImportError:
 from opencmiss.zinc.sceneviewer import Sceneviewer, Sceneviewerevent
 from opencmiss.zinc.sceneviewerinput import Sceneviewerinput
 from opencmiss.zinc.scenecoordinatesystem import \
-        SCENECOORDINATESYSTEM_LOCAL, \
         SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT,\
         SCENECOORDINATESYSTEM_WORLD
 from opencmiss.zinc.field import Field
 from opencmiss.zinc.glyph import Glyph
-from opencmiss.zinc.status import OK
+from opencmiss.zinc.result import RESULT_OK
+
+selection_group_name = 'cmiss_selection'
 
 # mapping from qt to zinc start
 # Create a button map of Qt mouse buttons to Zinc input buttons
@@ -89,6 +90,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         '''
         QtOpenGL.QGLWidget.__init__(self, parent, shared)
         # Create a Zinc context from which all other objects can be derived either directly or indirectly.
+        self._graphicsInitialized = False
         self._context = None
         self._sceneviewer = None
         self._scenepicker = None
@@ -98,8 +100,9 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         self._dataSelectMode = True
         self._elemSelectMode = True
         self._selection_mode = SelectionMode.NONE
-        self._selectionGroup = None
-        self._selectionBox = None # created and destroyed on demand in mouse events
+        self._selectionBox = None  # created and destroyed on demand in mouse events
+        self._selectionFilter = None  # Client-specified filter which is used in logical AND with sceneviewer filter in selection
+        self._selectTol = 3.0  # how many pixels on all sides to add to selection box when a point is clicked on
         self._ignore_mouse_events = False
         self._selectionKeyPressed = False
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
@@ -107,16 +110,93 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
 
     def setContext(self, context):
         '''
-        Sets the context for this ZincWidget.  This should be set before the initializeGL()
-        method is called otherwise the scene viewer cannot be created.
+        Sets the context for this Zinc Scenviewer widget. Prompts creation of a new Zinc
+        Sceneviewer, once graphics are initialised.
         '''
         self._context = context
+        if self._graphicsInitialized:
+            self._createSceneviewer()
 
     def getContext(self):
-        if not self._context is None:
+        if self._context is not None:
             return self._context
         else:
             raise RuntimeError("Zinc context has not been set in Sceneviewerwidget.")
+
+    def _createSceneviewer(self):
+        # Following throws exception if you haven't called setContext() yet
+        self.getContext()
+        self._sceneviewernotifier = None
+
+        # From the scene viewer module we can create a scene viewer, we set up the
+        # scene viewer to have the same OpenGL properties as the QGLWidget.
+        sceneviewermodule = self._context.getSceneviewermodule()
+        self._sceneviewer = sceneviewermodule.createSceneviewer(Sceneviewer.BUFFERING_MODE_DOUBLE, Sceneviewer.STEREO_MODE_DEFAULT)
+        self._sceneviewer.setProjectionMode(Sceneviewer.PROJECTION_MODE_PERSPECTIVE)
+        self._sceneviewer.setViewportSize(self.width(), self.height())
+
+        # Get the default scene filter, which filters by visibility flags
+        scenefiltermodule = self._context.getScenefiltermodule()
+        scenefilter = scenefiltermodule.getDefaultScenefilter()
+        self._sceneviewer.setScenefilter(scenefilter)
+
+        region = self._context.getDefaultRegion()
+        scene = region.getScene()
+        self._sceneviewer.setScene(scene)
+
+        self._sceneviewernotifier = self._sceneviewer.createSceneviewernotifier()
+        self._sceneviewernotifier.setCallback(self._zincSceneviewerEvent)
+
+        self._sceneviewer.viewAll()
+
+    def clearSelection(self):
+        '''
+        If there is a selection group, clears it and removes it from scene.
+        '''
+        selectionGroup = self.getSelectionGroup()
+        if selectionGroup is not None:
+            selectionGroup.clear()
+            selectionGroup = Field()  # NULL
+            scene = self._sceneviewer.getScene()
+            scene.setSelectionField(selectionGroup)
+
+    def getSelectionGroup(self):
+        '''
+        :return: Valid current selection group field or None.
+        '''
+        scene = self._sceneviewer.getScene()
+        selectionGroup = scene.getSelectionField()
+        if selectionGroup.isValid():
+            selectionGroup = selectionGroup.castGroup()
+            if selectionGroup.isValid():
+                return selectionGroup
+        return None
+
+    def getOrCreateSelectionGroup(self):
+        selectionGroup = self.getSelectionGroup()
+        if selectionGroup is not None:
+            return selectionGroup
+        scene = self._sceneviewer.getScene()
+        region = scene.getRegion()
+        fieldmodule = region.getFieldmodule()
+        selectionGroup = fieldmodule.findFieldByName(selection_group_name)
+        if selectionGroup.isValid():
+            selectionGroup = selectionGroup.castGroup()
+            if selectionGroup.isValid():
+                selectionGroup.setManaged(False)
+        if not selectionGroup.isValid():
+            fieldmodule.beginChange()
+            selectionGroup = fieldmodule.createFieldGroup()
+            selectionGroup.setName(selection_group_name)
+            fieldmodule.endChange()
+        scene.setSelectionField(selectionGroup)
+        return selectionGroup
+
+    def setScene(self, scene):
+        if self._sceneviewer is not None:
+            self._sceneviewer.setScene(scene)
+            self._scenepicker = scene.createScenepicker()
+            self.setSelectionfilter(self._selectionFilter)
 
     def getSceneviewer(self):
         '''
@@ -162,60 +242,14 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
     # initializeGL start
     def initializeGL(self):
         '''
-        Initialise the Zinc scene for drawing the axis glyph at a point.  
+        The OpenGL context is ready for use. If Zinc Context has been set, create Zinc Sceneviewer, otherwise
+        inform client who is required to set Context at a later time.
         '''
-        # Following throws exception if you haven't called setContext() yet
-        self.getContext()
-        if self._sceneviewer is None:
-            # Get the scene viewer module.
-            scene_viewer_module = self._context.getSceneviewermodule()
-
-            # From the scene viewer module we can create a scene viewer, we set up the
-            # scene viewer to have the same OpenGL properties as the QGLWidget.
-            self._sceneviewer = scene_viewer_module.createSceneviewer(Sceneviewer.BUFFERING_MODE_DOUBLE, Sceneviewer.STEREO_MODE_DEFAULT)
-            self._sceneviewer.setProjectionMode(Sceneviewer.PROJECTION_MODE_PERSPECTIVE)
-
-            # Create a filter for visibility flags which will allow us to see our graphic.
-            filter_module = self._context.getScenefiltermodule()
-            # By default graphics are created with their visibility flags set to on (or true).
-            graphics_filter = filter_module.createScenefilterVisibilityFlags()
-
-            # Set the graphics filter for the scene viewer otherwise nothing will be visible.
-            self._sceneviewer.setScenefilter(graphics_filter)
-            region = self._context.getDefaultRegion()
-            scene = region.getScene()
-            fieldmodule = region.getFieldmodule()
-
-            self._sceneviewer.setScene(scene)
-
-            self._selectionGroup = fieldmodule.createFieldGroup()
-            scene.setSelectionField(self._selectionGroup)
-
-            self._scenepicker = scene.createScenepicker()
-            self._scenepicker.setScenefilter(graphics_filter)
-
-            # Set up unproject pipeline
-            self._window_coords_from = fieldmodule.createFieldConstant([0, 0, 0])
-            self._global_coords_from = fieldmodule.createFieldConstant([0, 0, 0])
-            unproject = fieldmodule.createFieldSceneviewerProjection(self._sceneviewer, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, SCENECOORDINATESYSTEM_WORLD)
-            project = fieldmodule.createFieldSceneviewerProjection(self._sceneviewer, SCENECOORDINATESYSTEM_WORLD, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT)
-
-    #         unproject_t = fieldmodule.createFieldTranspose(4, unproject)
-            self._global_coords_to = fieldmodule.createFieldProjection(self._window_coords_from, unproject)
-            self._window_coords_to = fieldmodule.createFieldProjection(self._global_coords_from, project)
-
-
-            self._sceneviewer.viewAll()
-
-    #  Not really applicable to us yet.
-    #         self._selection_notifier = scene.createSelectionnotifier()
-    #         self._selection_notifier.setCallback(self._zincSelectionEvent)
-
-            self._sceneviewernotifier = self._sceneviewer.createSceneviewernotifier()
-            self._sceneviewernotifier.setCallback(self._zincSceneviewerEvent)
-
-            self.graphicsInitialized.emit()
-            # initializeGL end
+        self._graphicsInitialized = True
+        if self._context:
+            self._createSceneviewer()
+        self.graphicsInitialized.emit()
+        # initializeGL end
 
     def setProjectionMode(self, mode):
         if mode == ProjectionMode.PARALLEL:
@@ -231,7 +265,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
 
     def getViewParameters(self):
         result, eye, lookat, up = self._sceneviewer.getLookatParameters()
-        if result == OK:
+        if result == RESULT_OK:
             angle = self._sceneviewer.getViewAngle()
             return (eye, lookat, up, angle)
 
@@ -259,51 +293,55 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         self._scenepicker.setSceneviewerRectangle(self._sceneviewer, coordinate_system, left, bottom, right, top);
 
     def setSelectionfilter(self, scenefilter):
+        '''
+        Set filter to be applied in logical AND with sceneviewer filter during selection
+        '''
+        self._selectionFilter = scenefilter
+        sceneviewerfilter = self._sceneviewer.getScenefilter()
+        if self._selectionFilter is not None:
+            scenefiltermodule = self._context.getScenefiltermodule()
+            scenefilter = scenefiltermodule.createScenefilterOperatorAnd()
+            scenefilter.appendOperand(sceneviewerfilter)
+            if self._selectionFilter is not None:
+                scenefilter.appendOperand(self._selectionFilter)
+        else:
+            scenefilter = sceneviewerfilter
         self._scenepicker.setScenefilter(scenefilter)
 
     def getSelectionfilter(self):
-        result, scenefilter = self._scenepicker.getScenefilter()
-        if result == OK:
-            return scenefilter
-
-        return None
+        return self._selectionFilter
 
     def project(self, x, y, z):
         '''
-        project the given point in global coordinates into window coordinates
+        Project the given point in global coordinates into window pixel coordinates
         with the origin at the window's top left pixel.
+        Note the z pixel coordinate is a depth which is mapped so that -1 is
+        on the far clipping plane, and +1 is on the near clipping plane.
         '''
         in_coords = [x, y, z]
-        fieldmodule = self._global_coords_from.getFieldmodule()
-        fieldcache = fieldmodule.createFieldcache()
-        self._global_coords_from.assignReal(fieldcache, in_coords)
-        result, out_coords = self._window_coords_to.evaluateReal(fieldcache, 3)
-        if result == OK:
+        result, out_coords = self._sceneviewer.transformCoordinates(SCENECOORDINATESYSTEM_WORLD, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, Scene(), in_coords)
+        if result == RESULT_OK:
             return out_coords  # [out_coords[0] / out_coords[3], out_coords[1] / out_coords[3], out_coords[2] / out_coords[3]]
 
         return None
 
     def unproject(self, x, y, z):
         '''
-        unproject the given point in window coordinates where the origin is
-        at the window's top left pixel into global coordinates.  The z value
-        is a depth which is mapped so that 0 is on the near plane and 1 is 
-        on the far plane.
-        ???GRC -1 on the far and +1 on the near clipping plane
+        Unproject the given point in window pixel coordinates where the origin is
+        at the window's top left pixel into global coordinates.
+        Note the z pixel coordinate is a depth which is mapped so that -1 is
+        on the far clipping plane, and +1 is on the near clipping plane.
         '''
         in_coords = [x, y, z]
-        fieldmodule = self._window_coords_from.getFieldmodule()
-        fieldcache = fieldmodule.createFieldcache()
-        self._window_coords_from.assignReal(fieldcache, in_coords)
-        result, out_coords = self._global_coords_to.evaluateReal(fieldcache, 3)
-        if result == OK:
+        result, out_coords = self._sceneviewer.transformCoordinates(SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, SCENECOORDINATESYSTEM_WORLD, Scene(), in_coords)
+        if result == RESULT_OK:
             return out_coords  # [out_coords[0] / out_coords[3], out_coords[1] / out_coords[3], out_coords[2] / out_coords[3]]
 
         return None
 
     def getViewportSize(self):
         result, width, height = self._sceneviewer.getViewportSize()
-        if result == OK:
+        if result == RESULT_OK:
             return (width, height)
 
         return None
@@ -312,7 +350,8 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         self._sceneviewer.setTumbleRate(rate)
 
     def _getNearestGraphic(self, x, y, domain_type):
-        self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_LOCAL, x - 0.5, y - 0.5, x + 0.5, y + 0.5)
+        self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT,
+            x - self._selectTol, y - self._selectTol, x + self._selectTol, y + self._selectTol)
         nearest_graphics = self._scenepicker.getNearestGraphics()
         if nearest_graphics.isValid() and nearest_graphics.getFieldDomainType() == domain_type:
             return nearest_graphics
@@ -343,7 +382,8 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         return self._getNearestGraphic(x, y, Field.DOMAIN_TYPE_MESH2D)
 
     def getNearestNode(self, x, y):
-        self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_LOCAL, x - 0.5, y - 0.5, x + 0.5, y + 0.5)
+        self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT,
+            x - self._selectTol, y - self._selectTol, x + self._selectTol, y + self._selectTol)
         node = self._scenepicker.getNearestNode()
 
         return node
@@ -410,17 +450,21 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
 
     def mousePressEvent(self, event):
         '''
-        Inform the scene viewer of a mouse press event.
+        Handle a mouse press event in the scene viewer.
         '''
-        event.accept()
-        self._handle_mouse_events = False  # Track when the zinc should be handling mouse events
+        self._use_zinc_mouse_event_handling = False  # Track when zinc should be handling mouse events
         if self._ignore_mouse_events:
             event.ignore()
-        elif button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_LEFT and self._selectionKeyPressed and (self._nodeSelectMode or self._elemSelectMode):
-            self._selection_position_start = (event.x(), event.y())
+            return
+
+        event.accept()
+        self._selection_position_start = (event.x(), event.y())
+
+        if button_map[event.button()] == Sceneviewerinput.BUTTON_TYPE_LEFT and self._selectionKeyPressed and (self._nodeSelectMode or self._elemSelectMode):
             self._selection_mode = SelectionMode.EXCLUSIVE
             if event.modifiers() & QtCore.Qt.SHIFT:
                 self._selection_mode = SelectionMode.ADDITIVE
+
         else:
             scene_input = self._sceneviewer.createSceneviewerinput()
             scene_input.setPosition(event.x(), event.y())
@@ -428,103 +472,125 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
             scene_input.setButtonType(button_map[event.button()])
             scene_input.setModifierFlags(modifier_map(event.modifiers()))
             self._sceneviewer.processSceneviewerinput(scene_input)
-            self._handle_mouse_events = True            
+            self._use_zinc_mouse_event_handling = True
 
     def mouseReleaseEvent(self, event):
         '''
-        Inform the scene viewer of a mouse release event.
+        Handle a mouse release event in the scene viewer.
         '''
+        if self._ignore_mouse_events:
+            event.ignore()
+            return
         event.accept()
-        if not self._ignore_mouse_events and self._selection_mode != SelectionMode.NONE:
+        if self._selection_mode != SelectionMode.NONE:
+            self._removeSelectionBox()
             x = event.x()
             y = event.y()
             # Construct a small frustum to look for nodes in.
             root_region = self._context.getDefaultRegion()
             root_region.beginHierarchicalChange()
-            if self._selectionBox != None:
-                scene = self._selectionBox.getScene()
-                scene.removeGraphics(self._selectionBox)
-                self._selectionBox = None
 
-            if (x != self._selection_position_start[0] and y != self._selection_position_start[1]):
+            scenepicker = self.getScenepicker()
+            if (x != self._selection_position_start[0]) or (y != self._selection_position_start[1]):
+                # box select
                 left = min(x, self._selection_position_start[0])
                 right = max(x, self._selection_position_start[0])
                 bottom = min(y, self._selection_position_start[1])
                 top = max(y, self._selection_position_start[1])
-                self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_LOCAL, left, bottom, right, top);
+                scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, left, bottom, right, top);
                 if self._selection_mode == SelectionMode.EXCLUSIVE:
-                    self._selectionGroup.clear()
-                if self._nodeSelectMode or self._dataSelectMode:
-                    self._scenepicker.addPickedNodesToFieldGroup(self._selectionGroup)
-                if self._elemSelectMode:
-                    self._scenepicker.addPickedElementsToFieldGroup(self._selectionGroup)
+                    self.clearSelection()
+                if self._nodeSelectMode or self._dataSelectMode or self._elemSelectMode:
+                    selectionGroup = self.getOrCreateSelectionGroup()
+                    if self._nodeSelectMode or self._dataSelectMode:
+                        scenepicker.addPickedNodesToFieldGroup(selectionGroup)
+                    if self._elemSelectMode:
+                        scenepicker.addPickedElementsToFieldGroup(selectionGroup)
+
             else:
+                # point select - get nearest object only
+                scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT,
+                    x - self._selectTol, y - self._selectTol, x + self._selectTol, y + self._selectTol)
+                nearestGraphics = scenepicker.getNearestGraphics()
+                if (self._nodeSelectMode or self._dataSelectMode or self._elemSelectMode) \
+                        and (self._selection_mode == SelectionMode.EXCLUSIVE) \
+                        and not nearestGraphics.isValid():
+                    self.clearSelection()
 
-                self._scenepicker.setSceneviewerRectangle(self._sceneviewer, SCENECOORDINATESYSTEM_LOCAL, x - 0.5, y - 0.5, x + 0.5, y + 0.5)
-                if self._nodeSelectMode and self._elemSelectMode and self._selection_mode == SelectionMode.EXCLUSIVE and not self._scenepicker.getNearestGraphics().isValid():
-                    self._selectionGroup.clear()
+                if (self._nodeSelectMode and (nearestGraphics.getFieldDomainType() == Field.DOMAIN_TYPE_NODES)) or \
+                    (self._dataSelectMode and (nearestGraphics.getFieldDomainType() == Field.DOMAIN_TYPE_DATAPOINTS)):
+                    node = scenepicker.getNearestNode()
+                    if node.isValid():
+                        nodeset = node.getNodeset()
+                        selectionGroup = self.getOrCreateSelectionGroup()
+                        nodegroup = selectionGroup.getFieldNodeGroup(nodeset)
+                        if not nodegroup.isValid():
+                            nodegroup = selectionGroup.createFieldNodeGroup(nodeset)
+                        group = nodegroup.getNodesetGroup()
+                        if self._selection_mode == SelectionMode.EXCLUSIVE:
+                            remove_current = (group.getSize() == 1) and group.containsNode(node)
+                            selectionGroup.clear()
+                            if not remove_current:
+                                # re-find node group lost by above clear()
+                                nodegroup = selectionGroup.getFieldNodeGroup(nodeset)
+                                if not nodegroup.isValid():
+                                    nodegroup = selectionGroup.createFieldNodeGroup(nodeset)
+                                group = nodegroup.getNodesetGroup()
+                                group.addNode(node)
+                        elif self._selection_mode == SelectionMode.ADDITIVE:
+                            if group.containsNode(node):
+                                group.removeNode(node)
+                            else:
+                                group.addNode(node)
 
-                if self._nodeSelectMode and (self._scenepicker.getNearestGraphics().getFieldDomainType() == Field.DOMAIN_TYPE_NODES):
-                    node = self._scenepicker.getNearestNode()
-                    nodeset = node.getNodeset()
-
-                    nodegroup = self._selectionGroup.getFieldNodeGroup(nodeset)
-                    if not nodegroup.isValid():
-                        nodegroup = self._selectionGroup.createFieldNodeGroup(nodeset)
-
-                    group = nodegroup.getNodesetGroup()
-                    if self._selection_mode == SelectionMode.EXCLUSIVE:
-                        remove_current = group.getSize() == 1 and group.containsNode(node)
-                        self._selectionGroup.clear()
-                        if not remove_current:
-                            group.addNode(node)
-                    elif self._selection_mode == SelectionMode.ADDITIVE:
-                        if group.containsNode(node):
-                            group.removeNode(node)
-                        else:
-                            group.addNode(node)
-
-                if self._elemSelectMode and (self._scenepicker.getNearestGraphics().getFieldDomainType() in [Field.DOMAIN_TYPE_MESH1D, Field.DOMAIN_TYPE_MESH2D, Field.DOMAIN_TYPE_MESH3D, Field.DOMAIN_TYPE_MESH_HIGHEST_DIMENSION]):
-                    elem = self._scenepicker.getNearestElement()
-                    mesh = elem.getMesh()
-
-                    elementgroup = self._selectionGroup.getFieldElementGroup(mesh)
-                    if not elementgroup.isValid():
-                        elementgroup = self._selectionGroup.createFieldElementGroup(mesh)
-
-                    group = elementgroup.getMeshGroup()
-                    if self._selection_mode == SelectionMode.EXCLUSIVE:
-                        remove_current = group.getSize() == 1 and group.containsElement(elem)
-                        self._selectionGroup.clear()
-                        if not remove_current:
-                            group.addElement(elem)
-                    elif self._selection_mode == SelectionMode.ADDITIVE:
-                        if group.containsElement(elem):
-                            group.removeElement(elem)
-                        else:
-                            group.addElement(elem)
-
+                if self._elemSelectMode and (nearestGraphics.getFieldDomainType() in \
+                        [Field.DOMAIN_TYPE_MESH1D, Field.DOMAIN_TYPE_MESH2D, Field.DOMAIN_TYPE_MESH3D, Field.DOMAIN_TYPE_MESH_HIGHEST_DIMENSION]):
+                    elem = scenepicker.getNearestElement()
+                    if elem.isValid():
+                        mesh = elem.getMesh()
+                        selectionGroup = self.getOrCreateSelectionGroup()
+                        elementgroup = selectionGroup.getFieldElementGroup(mesh)
+                        if not elementgroup.isValid():
+                            elementgroup = selectionGroup.createFieldElementGroup(mesh)
+                        group = elementgroup.getMeshGroup()
+                        if self._selection_mode == SelectionMode.EXCLUSIVE:
+                            remove_current = (group.getSize() == 1) and group.containsElement(elem)
+                            selectionGroup.clear()
+                            if not remove_current:
+                                # re-find element group lost by above clear()
+                                elementgroup = selectionGroup.getFieldElementGroup(mesh)
+                                if not elementgroup.isValid():
+                                    elementgroup = selectionGroup.createFieldElementGroup(mesh)
+                                group = elementgroup.getMeshGroup()
+                                group.addElement(elem)
+                        elif self._selection_mode == SelectionMode.ADDITIVE:
+                            if group.containsElement(elem):
+                                group.removeElement(elem)
+                            else:
+                                group.addElement(elem)
 
             root_region.endHierarchicalChange()
             self._selection_mode = SelectionMode.NONE
-        elif not self._ignore_mouse_events and self._handle_mouse_events:
+
+        elif self._use_zinc_mouse_event_handling:
             scene_input = self._sceneviewer.createSceneviewerinput()
             scene_input.setPosition(event.x(), event.y())
             scene_input.setEventType(Sceneviewerinput.EVENT_TYPE_BUTTON_RELEASE)
             scene_input.setButtonType(button_map[event.button()])
-
             self._sceneviewer.processSceneviewerinput(scene_input)
-        else:
-            event.ignore()
 
     def mouseMoveEvent(self, event):
         '''
-        Inform the scene viewer of a mouse move event and update the OpenGL scene to reflect this
-        change to the viewport.
+        Handle a mouse move event in the scene viewer.
+        Behaviour depends on modes set in original mouse press event.
         '''
+        if self._ignore_mouse_events:
+            event.ignore()
+            return
 
         event.accept()
-        if not self._ignore_mouse_events and self._selection_mode != SelectionMode.NONE:
+
+        if self._selection_mode != SelectionMode.NONE:
             x = event.x()
             y = event.y()
             xdiff = float(x - self._selection_position_start[0])
@@ -535,31 +601,36 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
                 ydiff = 1
             xoff = float(self._selection_position_start[0]) / xdiff + 0.5
             yoff = float(self._selection_position_start[1]) / ydiff + 0.5
+            self._addUpdateSelectionBox(xdiff, ydiff, xoff, yoff)
 
-            # Using a non-ideal workaround for creating a rubber band for selection.
-            # This will create strange visual artifacts when using two scene viewers looking at
-            # the same scene.  Waiting on a proper solution in the API.
-            # Note if the standard glyphs haven't been defined then the
-            # selection box will not be visible
-            scene = self._sceneviewer.getScene()
-            scene.beginChange()
-            if self._selectionBox is None:
-                self._selectionBox = scene.createGraphicsPoints()
-                self._selectionBox.setScenecoordinatesystem(SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT)
-            attributes = self._selectionBox.getGraphicspointattributes()
-            attributes.setGlyphShapeType(Glyph.SHAPE_TYPE_CUBE_WIREFRAME)
-            attributes.setBaseSize([xdiff, ydiff, 0.999])
-            attributes.setGlyphOffset([xoff, -yoff, 0])
-            #self._selectionBox.setVisibilityFlag(True)
-            scene.endChange()
-        elif not self._ignore_mouse_events and self._handle_mouse_events:
+        elif self._use_zinc_mouse_event_handling:
             scene_input = self._sceneviewer.createSceneviewerinput()
             scene_input.setPosition(event.x(), event.y())
             scene_input.setEventType(Sceneviewerinput.EVENT_TYPE_MOTION_NOTIFY)
             if event.type() == QtCore.QEvent.Leave:
                 scene_input.setPosition(-1, -1)
-
             self._sceneviewer.processSceneviewerinput(scene_input)
-        else:
-            event.ignore()
 
+    def _addUpdateSelectionBox(self, xdiff, ydiff, xoff, yoff):
+        # Using a non-ideal workaround for creating a rubber band for selection.
+        # This will create strange visual artifacts when using two scene viewers looking at
+        # the same scene.  Waiting on a proper solution in the API.
+        # Note if the standard glyphs haven't been defined then the
+        # selection box will not be visible
+        scene = self._sceneviewer.getScene()
+        scene.beginChange()
+        if self._selectionBox is None:
+            self._selectionBox = scene.createGraphicsPoints()
+            self._selectionBox.setScenecoordinatesystem(SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT)
+        attributes = self._selectionBox.getGraphicspointattributes()
+        attributes.setGlyphShapeType(Glyph.SHAPE_TYPE_CUBE_WIREFRAME)
+        attributes.setBaseSize([xdiff, ydiff, 0.999])
+        attributes.setGlyphOffset([xoff, -yoff, 0])
+        #self._selectionBox.setVisibilityFlag(True)
+        scene.endChange()
+
+    def _removeSelectionBox(self):
+        if self._selectionBox is not None:
+            scene = self._selectionBox.getScene()
+            scene.removeGraphics(self._selectionBox)
+            self._selectionBox = None

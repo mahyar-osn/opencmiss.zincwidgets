@@ -13,7 +13,7 @@ try:
 except ImportError:
     from PyQt4 import QtCore, QtGui
 
-from sceneeditorwidget_ui import Ui_SceneEditorWidget
+from opencmiss.zincwidgets.sceneeditorwidget_ui import Ui_SceneEditorWidget
 from opencmiss.zinc.field import Field
 from opencmiss.zinc.graphics import Graphics
 from opencmiss.zinc.status import OK as ZINC_OK
