@@ -487,8 +487,9 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
             x = event.x()
             y = event.y()
             # Construct a small frustum to look for nodes in.
-            root_region = self._context.getDefaultRegion()
-            root_region.beginHierarchicalChange()
+            scene = self._sceneviewer.getScene()
+            region = scene.getRegion()
+            region.beginHierarchicalChange()
 
             scenepicker = self.getScenepicker()
             if (x != self._selection_position_start[0]) or (y != self._selection_position_start[1]):
@@ -569,7 +570,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
                             else:
                                 group.addElement(elem)
 
-            root_region.endHierarchicalChange()
+            region.endHierarchicalChange()
             self._selection_mode = SelectionMode.NONE
 
         elif self._use_zinc_mouse_event_handling:
