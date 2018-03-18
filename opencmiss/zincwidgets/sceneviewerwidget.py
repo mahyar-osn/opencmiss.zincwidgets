@@ -96,6 +96,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         self._scenepicker = None
 
         # Selection attributes
+        self._selectionKeyHandling = True  # set to False if parent widget is to handle selection key presses
         self._nodeSelectMode = True
         self._dataSelectMode = True
         self._elemSelectMode = True
@@ -206,6 +207,13 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
     
     def setSelectionModeAdditive(self):
         self._selectionAlwaysAdditive = True
+
+    def setSelectionKeyHandling(self, state):
+        '''
+        Set whether widget handles its own selection key events.
+        :param state: True if widget handles selection key, false if not (i.e. pass to parent)
+        '''
+        self._selectionKeyHandling = state
 
     def setSelectModeNode(self):
         '''
@@ -434,7 +442,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         # resizeGL end
         
     def keyPressEvent(self, event):
-        if (event.key() == QtCore.Qt.Key_S) and event.isAutoRepeat() == False:
+        if self._selectionKeyHandling and (event.key() == QtCore.Qt.Key_S) and (event.isAutoRepeat() == False):
             self._selectionKeyPressed = True
             event.setAccepted(True)
         else:
@@ -442,7 +450,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         
             
     def keyReleaseEvent(self, event):
-        if (event.key() == QtCore.Qt.Key_S)  and event.isAutoRepeat() == False:
+        if self._selectionKeyHandling and (event.key() == QtCore.Qt.Key_S) and event.isAutoRepeat() == False:
             self._selectionKeyPressed = False
             event.setAccepted(True)
         else:
@@ -487,8 +495,9 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
             x = event.x()
             y = event.y()
             # Construct a small frustum to look for nodes in.
-            root_region = self._context.getDefaultRegion()
-            root_region.beginHierarchicalChange()
+            scene = self._sceneviewer.getScene()
+            region = scene.getRegion()
+            region.beginHierarchicalChange()
 
             scenepicker = self.getScenepicker()
             if (x != self._selection_position_start[0]) or (y != self._selection_position_start[1]):
@@ -569,7 +578,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
                             else:
                                 group.addElement(elem)
 
-            root_region.endHierarchicalChange()
+            region.endHierarchicalChange()
             self._selection_mode = SelectionMode.NONE
 
         elif self._use_zinc_mouse_event_handling:
