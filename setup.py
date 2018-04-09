@@ -4,6 +4,8 @@ Zinc Python Tools
 A collection of Qt widgets and utilities building on the Python bindings for the OpenCMISS-Zinc Visualisation Library.
 """
 
+from setuptools import setup
+
 classifiers = """\
 Development Status :: 5 - Production/Stable
 Intended Audience :: Developers
@@ -19,20 +21,18 @@ Topic :: Scientific/Engineering :: Visualization
 Topic :: Software Development :: Libraries :: Python Modules
 """
 
-from setuptools import setup
-
-doclines = __doc__.split("\n")
+doc_lines = __doc__.split("\n")
 
 setup(
-	name='ZincPythonTools',
-	version='1.0.0',
-	author='H. Sorby',
-	author_email='h.sorby@auckland.ac.nz',
-	packages=['opencmiss', 'opencmiss.zincwidgets'],
-	platforms=['any'],
-	url='http://pypi.python.org/pypi/ZincPythonTools/',
-	license='LICENSE.txt',
-	description=doclines[0],
-	classifiers = filter(None, classifiers.split("\n")),
+    name='ZincPythonTools',
+    version='2.0.0',
+    author='H. Sorby',
+    author_email='h.sorby@auckland.ac.nz',
+    packages=['opencmiss', 'opencmiss.zincwidgets'],
+    platforms=['any'],
+    url='http://pypi.python.org/pypi/ZincPythonTools/',
+    license='LICENSE',
+    description=doc_lines[0],
+    classifiers=filter(None, classifiers.split("\n")),
 )
 

@@ -14,10 +14,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # See the examples at https://svn.physiomeproject.org/svn/cmiss/zinc/bindings/trunk/python/ for further
 # information.
 
-try:
-    from PySide import QtCore, QtOpenGL
-except ImportError:
-    from PyQt4 import QtCore, QtOpenGL
+from PySide2 import QtCore, QtOpenGL
 
 # from opencmiss.zinc.glyph import Glyph
 from opencmiss.zinc.sceneviewer import Sceneviewer, Sceneviewerevent
@@ -37,6 +34,7 @@ button_map = {QtCore.Qt.LeftButton: Sceneviewerinput.BUTTON_TYPE_LEFT,
               QtCore.Qt.MidButton: Sceneviewerinput.BUTTON_TYPE_MIDDLE,
               QtCore.Qt.RightButton: Sceneviewerinput.BUTTON_TYPE_RIGHT}
 
+
 # Create a modifier map of Qt modifier keys to Zinc modifier keys
 def modifier_map(qt_modifiers):
     '''
@@ -50,7 +48,9 @@ def modifier_map(qt_modifiers):
     return modifiers
 # mapping from qt to zinc end
 
+
 SELECTION_RUBBERBAND_NAME = 'selection_rubberband'
+
 
 # projectionMode start
 class ProjectionMode(object):
@@ -71,24 +71,15 @@ class SelectionMode(object):
 
 class SceneviewerWidget(QtOpenGL.QGLWidget):
     
-    try:
-        # PySide
-        graphicsInitialized = QtCore.Signal()
-    except AttributError:
-        # PyQt
-        graphicsInitialized = QtCore.pyqtSignal()
-    
-
-    # Create a signal to notify when the sceneviewer is ready.
     graphicsInitialized = QtCore.Signal()
 
     # init start
     def __init__(self, parent=None, shared=None):
-        '''
+        super(SceneviewerWidget, self).__init__(parent, shared)
+        """
         Call the super class init functions, set the  Zinc context and the scene viewer handle to None.
         Initialise other attributes that deal with selection and the rotation of the plane.
-        '''
-        QtOpenGL.QGLWidget.__init__(self, parent, shared)
+        """
         # Create a Zinc context from which all other objects can be derived either directly or indirectly.
         self._graphicsInitialized = False
         self._context = None
@@ -110,10 +101,10 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         # init end
 
     def setContext(self, context):
-        '''
+        """
         Sets the context for this Zinc Scenviewer widget. Prompts creation of a new Zinc
         Sceneviewer, once graphics are initialised.
-        '''
+        """
         self._context = context
         if self._graphicsInitialized:
             self._createSceneviewer()
