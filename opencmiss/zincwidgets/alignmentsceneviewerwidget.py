@@ -25,14 +25,14 @@ class AlignmentSceneviewerWidget(SceneviewerWidget):
         Holding down the 'A' key performs alignment (if align mode is on)
         """
         if (event.key() == QtCore.Qt.Key_A) and event.isAutoRepeat() is False:
-            self._alignKeyPressed = True
+            self._model.setStateAlign()
             event.setAccepted(True)
         else:
            super(AlignmentSceneviewerWidget, self).keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
-        if (event.key() == QtCore.Qt.Key_A)  and event.isAutoRepeat() is False:
-            self._alignKeyPressed = False
+        if (event.key() == QtCore.Qt.Key_A) and event.isAutoRepeat() is False:
+            self._model.setStateAlign(False)
             event.setAccepted(True)
         else:
            super(AlignmentSceneviewerWidget, self).keyReleaseEvent(event)
@@ -40,20 +40,19 @@ class AlignmentSceneviewerWidget(SceneviewerWidget):
     def mousePressEvent(self, event):
         if self._active_button != QtCore.Qt.NoButton:
             return
-        if self._alignKeyPressed:
-            if self._model.isStateAlign():
-                self._active_button = event.button()
-                # shift-Left button becomes middle button, to support Mac
-                if (self._active_button == QtCore.Qt.LeftButton) and (event.modifiers() & QtCore.Qt.SHIFT):
-                    self._active_button = QtCore.Qt.MiddleButton
-                self._lastMousePos = [ event.x(), event.y() ]
+        if self._model.isStateAlign():
+            self._active_button = event.button()
+            # shift-Left button becomes middle button, to support Mac
+            if (self._active_button == QtCore.Qt.LeftButton) and (event.modifiers() & QtCore.Qt.SHIFT):
+                self._active_button = QtCore.Qt.MiddleButton
+            self._lastMousePos = [event.x(), event.y()]
         else:
             super(AlignmentSceneviewerWidget, self).mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         if self._lastMousePos is not None:
-            pos = [ event.x(), event.y() ]
-            delta = [ pos[0] - self._lastMousePos[0], pos[1] - self._lastMousePos[1] ]
+            pos = [event.x(), event.y()]
+            delta = [pos[0] - self._lastMousePos[0], pos[1] - self._lastMousePos[1]]
             result, eye = self._sceneviewer.getEyePosition()
             result, lookat = self._sceneviewer.getLookatPosition()
             result, up = self._sceneviewer.getUpVector()
