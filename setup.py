@@ -21,18 +21,19 @@ Topic :: Software Development :: Libraries :: Python Modules
 
 from setuptools import setup
 
-doclines = __doc__.split("\n")
+doc_lines = __doc__.split("\n")
+requires = ['opencmiss.utils']
 
 setup(
-	name='ZincPythonTools',
-	version='1.0.0',
-	author='H. Sorby',
-	author_email='h.sorby@auckland.ac.nz',
-	packages=['opencmiss', 'opencmiss.zincwidgets'],
-	platforms=['any'],
-	url='http://pypi.python.org/pypi/ZincPythonTools/',
-	license='LICENSE.txt',
-	description=doclines[0],
-	classifiers = filter(None, classifiers.split("\n")),
+    name='ZincPythonTools',
+    version='1.0.0',
+    author='H. Sorby',
+    author_email='h.sorby@auckland.ac.nz',
+    packages=['opencmiss', 'opencmiss.zincwidgets'],
+    platforms=['any'],
+    url='http://pypi.python.org/pypi/ZincPythonTools/',
+    license='LICENSE.txt',
+    description=doc_lines[0],
+    classifiers=filter(None, classifiers.split("\n")),
+    install_requires=requires,
 )
-
