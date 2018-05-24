@@ -328,7 +328,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         on the far clipping plane, and +1 is on the near clipping plane.
         """
         in_coords = [x, y, z]
-        result, out_coords = self._sceneviewer.transformCoordinates(SCENECOORDINATESYSTEM_WORLD, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, Scene(), in_coords)
+        result, out_coords = self._sceneviewer.transformCoordinates(SCENECOORDINATESYSTEM_WORLD, SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, self._sceneviewer.getScene(), in_coords)
         if result == RESULT_OK:
             return out_coords  # [out_coords[0] / out_coords[3], out_coords[1] / out_coords[3], out_coords[2] / out_coords[3]]
 
@@ -342,7 +342,7 @@ class SceneviewerWidget(QtOpenGL.QGLWidget):
         on the far clipping plane, and +1 is on the near clipping plane.
         """
         in_coords = [x, y, z]
-        result, out_coords = self._sceneviewer.transformCoordinates(SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, SCENECOORDINATESYSTEM_WORLD, Scene(), in_coords)
+        result, out_coords = self._sceneviewer.transformCoordinates(SCENECOORDINATESYSTEM_WINDOW_PIXEL_TOP_LEFT, SCENECOORDINATESYSTEM_WORLD, self._sceneviewer.getScene(), in_coords)
         if result == RESULT_OK:
             return out_coords  # [out_coords[0] / out_coords[3], out_coords[1] / out_coords[3], out_coords[2] / out_coords[3]]
 
