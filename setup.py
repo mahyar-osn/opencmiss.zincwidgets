@@ -1,5 +1,5 @@
 """
-Zinc Python Tools
+OpenCMISS ZincWidgets
 
 A collection of Qt widgets and utilities building on the Python bindings for the OpenCMISS-Zinc Visualisation Library.
 """
@@ -23,8 +23,10 @@ Topic :: Software Development :: Libraries :: Python Modules
 
 doc_lines = __doc__.split("\n")
 
+requires = ['opencmiss.utils >= 0.2.0']
+
 setup(
-    name='ZincPythonTools',
+    name='opencmiss.zincwidgets',
     version='2.0.0',
     author='H. Sorby',
     author_email='h.sorby@auckland.ac.nz',
@@ -34,5 +36,5 @@ setup(
     license='LICENSE',
     description=doc_lines[0],
     classifiers=filter(None, classifiers.split("\n")),
+    install_requires=requires,
 )
-
