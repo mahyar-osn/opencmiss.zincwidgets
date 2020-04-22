@@ -23,7 +23,7 @@ Topic :: Software Development :: Libraries :: Python Modules
 
 doc_lines = __doc__.split("\n")
 
-requires = ['opencmiss.utils >= 0.2.0']
+requires = ['opencmiss.utils >= 0.2.0', 'PySide2']
 
 setup(
     name='opencmiss.zincwidgets',
