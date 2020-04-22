@@ -1,7 +1,7 @@
 """
 Zinc Sceneviewer Widget
 
-Implements a Zinc Sceneviewer Widget on Python using PySide or PyQt,
+Implements a Zinc Sceneviewer Widget on Python using PySide2,
 which renders the Zinc Scene with OpenGL and allows interactive
 transformation of the view.
 Widget is derived from QtOpenGL.QGLWidget.

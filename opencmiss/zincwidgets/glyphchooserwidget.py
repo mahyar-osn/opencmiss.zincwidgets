@@ -9,7 +9,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 """
 
 try:
-    from PySide import QtCore, QtGui
+    from PySide2 import QtCore, QtGui
 except ImportError:
     from PyQt4 import QtCore, QtGui
 
